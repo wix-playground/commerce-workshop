@@ -1,5 +1,6 @@
 import { items } from '@wix/data';
 import { currentCart, recommendations } from '@wix/ecom';
+import { redirects } from '@wix/redirects';
 import { OAuthStrategy, createClient, media } from '@wix/sdk';
 import { collections, products } from '@wix/stores';
 import { ApplicationError } from '@wix/stores/build/cjs/src/stores-catalog-v1-product.public';
@@ -10,7 +11,7 @@ import { Cart, Collection, Menu, Page, Product } from './types';
 const reshapeCart = (cart: currentCart.Cart): Cart => {
   return {
     id: cart._id!,
-    checkoutUrl: '/',
+    checkoutUrl: '/cart-checkout',
     cost: {
       subtotalAmount: {
         amount: String(
@@ -430,3 +431,23 @@ export const getWixClient = () => {
   });
   return wixClient;
 };
+
+export async function createCheckoutUrl(postFlowUrl: string) {
+  const {
+    currentCart: { createCheckoutFromCurrentCart },
+    redirects: { createRedirectSession }
+  } = getWixClient().use({ currentCart, redirects });
+
+  const currentCheckout = await createCheckoutFromCurrentCart({
+    channelType: currentCart.ChannelType.OTHER_PLATFORM
+  });
+
+  const { redirectSession } = await createRedirectSession({
+    ecomCheckout: { checkoutId: currentCheckout.checkoutId },
+    callbacks: {
+      postFlowUrl
+    }
+  });
+
+  return redirectSession?.fullUrl!;
+}
