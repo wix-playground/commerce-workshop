@@ -49,7 +49,7 @@ export async function getCollections(): Promise<Collection[]> {
   // This function retrieves all the product collections (in Wix Dashborad called Categories).
   // Get all the collections and pass them here where they will be reshaped for the app.
 
-  const wixCollections = [];
+  const wixCollections: collections.Collection[] = [];
 
   const productCollections = [
     {
