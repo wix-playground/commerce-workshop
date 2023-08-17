@@ -1,13 +1,20 @@
+import { OAuthStrategy, createClient } from '@wix/sdk';
+import { WIX_REFRESH_TOKEN_COOKIE } from 'lib/constants';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next();
-
-  // Fill in the body of this function
-  // In the middleware, we need to check if the request already has a visitor
-  // session cookie. If it does, we can continue running the request handler,
-  // otherwise we need to create a new visitor session and set the cookie.
-
+  const cookies = request.cookies;
+  if (cookies.get(WIX_REFRESH_TOKEN_COOKIE)) {
+    return res;
+  }
+  const wixClient = createClient({
+    auth: OAuthStrategy({ clientId: process.env.NEXT_PUBLIC_WIX_CLIENT_ID! })
+  });
+  const tokens = await wixClient.auth.generateVisitorTokens();
+  res.cookies.set(WIX_REFRESH_TOKEN_COOKIE, JSON.stringify(tokens.refreshToken), {
+    maxAge: 60 * 60 * 24 * 30
+  });
   return res;
 }
 

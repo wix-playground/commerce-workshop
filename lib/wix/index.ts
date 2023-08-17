@@ -1,4 +1,7 @@
-import { currentCart } from '@wix/ecom';
+import { items } from '@wix/data';
+import { currentCart, recommendations } from '@wix/ecom';
+import { ApplicationError } from '@wix/ecom/build/cjs/src/ecom-v1-cart-cart.universal';
+import { redirects } from '@wix/redirects';
 import { OAuthStrategy, WixClient, createClient, media } from '@wix/sdk';
 import { collections, products } from '@wix/stores';
 import { SortKey } from 'lib/constants';
@@ -11,12 +14,22 @@ export const getWixClient = (): WixClient => {
   
   const wixClient = createClient({
     auth: OAuthStrategy({
-      clientId: process.env.WIX_CLIENT_ID!,
+      clientId: process.env.NEXT_PUBLIC_WIX_CLIENT_ID!,
     })
   });
   
   return wixClient;
 };
+
+function sortedProductsQuery(sortKey?: string, reverse?: boolean) {
+  const { queryProducts } = getWixClient().use(products);
+  const query = queryProducts();
+  if (reverse) {
+    return query.descending((sortKey! as SortKey) ?? 'name');
+  } else {
+    return query.ascending((sortKey! as SortKey) ?? 'name');
+  }
+}
 
 export async function getProducts({
   query,
@@ -27,36 +40,73 @@ export async function getProducts({
   reverse?: boolean;
   sortKey?: string;
 }): Promise<Product[]> {
-  // Here we should get all the products that match the requested parameters:
-  // query - A search query that was entered in the UI
-  // reverse - if true - should be descending sort, otherwise - ascending
-  // sortKey - the key to sort by (price, title, etc.)
-  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
+  const { items } = await sortedProductsQuery(sortKey, reverse)
+  .startsWith('name', query || '')
+  .find();
 
-  return [];
+  return items.map(reshapeProduct);
 }
 
 export async function getProduct(handle: string): Promise<Product | undefined> {
-  // Here we need to get a specific product by it's handle - in Wix terms it's called the slug.
-  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
+  const { queryProducts } = getWixClient().use(products);
+  const { items } = await queryProducts().eq('slug', handle).limit(1).find();
+  const product = items[0];
 
-  return undefined;
+  if (!product) {
+    return undefined;
+  }
+
+  return reshapeProduct(product);
 }
 
 export async function getProductRecommendations(productId: string): Promise<Product[]> {
-  // In this function we want to return a list of recommended products for the given product ID.
-  // Those will be displayed on the product page, suggesting other related products to the user.
-  // Try to see if you can find the correct API to call to get the product recommendations.
-  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
-  
-  return [];
+  const { getRecommendation } = getWixClient().use(recommendations);
+
+  const { recommendation } = await getRecommendation(
+    [
+      {
+        _id: '5dd69f67-9ab9-478e-ba7c-10c6c6e7285f',
+        appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+      },
+      {
+        _id: 'ba491fd2-b172-4552-9ea6-7202e01d1d3c',
+        appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+      },
+      {
+        _id: '68ebce04-b96a-4c52-9329-08fc9d8c1253',
+        appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+      }
+    ],
+    {
+      items: [
+        {
+          catalogItemId: productId,
+          appId: '215238eb-22a5-4c36-9e7b-e7c08025e04e'
+        }
+      ],
+      minimumRecommendedItems: 3
+    }
+  );
+
+  if (!recommendation) {
+    return [];
+  }
+
+  const { queryProducts } = getWixClient().use(products);
+  const { items } = await queryProducts()
+    .in(
+      '_id',
+      recommendation.items!.map((item) => item.catalogItemId)
+    )
+    .find();
+  return items.slice(0, 6).map(reshapeProduct);
 }
 
 export async function getCollections(): Promise<Collection[]> {
-  // This function retrieves all the product collections (in Wix Dashborad called Categories).
-  // Get all the collections and pass them here where they will be reshaped for the app.
+  const { queryCollections } = getWixClient().use(collections);
+  const { items } = await queryCollections().find();
 
-  const wixCollections: collections.Collection[] = [];
+  const wixCollections: collections.Collection[] = items;
 
   const productCollections = [
     {
@@ -79,10 +129,21 @@ export async function getCollections(): Promise<Collection[]> {
 }
 
 export async function getCollection(handle: string): Promise<Collection | undefined> {
-  // This function retrieves a specific collection by it's handle (slug).
-  // Note: you should use the `reshapeCollection` function to reshape the collection for this app.
+  const { getCollectionBySlug } = getWixClient().use(collections);
 
-  return undefined;
+  try {
+    const { collection } = await getCollectionBySlug(handle);
+
+    if (!collection) {
+      return undefined;
+    }
+
+    return reshapeCollection(collection);
+  } catch (e) {
+    if ((e as ApplicationError).code === '404') {
+      return undefined;
+    }
+  }
 }
 
 export async function getCollectionProducts({
@@ -94,79 +155,168 @@ export async function getCollectionProducts({
   reverse?: boolean;
   sortKey?: SortKey;
 }): Promise<Product[]> {
-  // This function returns all the products in a given collection. Note that
-  // the collection parameter here is the collection handle (/ slug). This function should
-  // also respect the `reverse` and `sortKey` paramteres like `getProducts`.
-  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
+  const { getCollectionBySlug } = getWixClient().use(collections);
+  let resolvedCollection;
+  try {
+    const { collection: wixCollection } = await getCollectionBySlug(collection);
+    resolvedCollection = wixCollection;
+  } catch (e) {
+    if ((e as any)?.details?.applicationError?.code !== 404) {
+      throw e;
+    }
+  }
 
-  return [];
+  if (!resolvedCollection) {
+    console.log(`No collection found for \`${collection}\``);
+    return [];
+  }
+
+  const { items } = await sortedProductsQuery(sortKey, reverse)
+    .hasSome('collectionIds', [resolvedCollection._id])
+    .find();
+
+  return items.map(reshapeProduct);
 }
 
 export async function addToCart(
   lines: { merchandiseId: string; quantity: number }[]
 ): Promise<Cart> {
-  // This function adds the given lines to the current visitor cart. Note that the merchandiseId is the product ID.
-  // Note: You should use the reshapeCart function to reshape the cart for the app.
+  const { addToCurrentCart } = getWixClient().use(currentCart);
+  const { cart } = await addToCurrentCart({
+    lineItems: lines.map(({ merchandiseId, quantity }) => ({
+      catalogReference: {
+        catalogItemId: merchandiseId,
+        appId: '1380b703-ce81-ff05-f115-39571d94dfcd'
+      },
+      quantity
+    }))
+  });
 
-  throw new Error('addToCart is not implemented')
+  return reshapeCart(cart!);
 }
 
 export async function getCart(): Promise<Cart | undefined> {
-  // This function returns the current visitor cart.
-  // Note that the visitor might not have a cart yet, so this function should return undefined if there is no cart.
-  // Note: You should use the reshapeCart function to reshape the cart for the app.
-  
-  return undefined;
+  const { getCurrentCart } = getWixClient().use(currentCart);
+  try {
+    const cart = await getCurrentCart();
+
+    return reshapeCart(cart);
+  } catch (e) {
+    if ((e as any).details.applicationError.code === 'OWNED_CART_NOT_FOUND') {
+      return undefined;
+    }
+  }
 }
 
 export async function removeFromCart(lineIds: string[]): Promise<Cart> {
-  // This function removes the given lines from the current visitor cart. Note that the lineId is the cart line ID.
-  // Note: You should use the reshapeCart function to reshape the cart for the app.
+  const { removeLineItemsFromCurrentCart } = getWixClient().use(currentCart);
 
-  throw new Error('removeFromCart is not implemented')
+  const { cart } = await removeLineItemsFromCurrentCart(lineIds);
+
+  return reshapeCart(cart!);
 }
 
 export async function updateCart(
   lines: { id: string; merchandiseId: string; quantity: number }[]
 ): Promise<Cart> {
-  // This function updates the given lines in the current visitor cart. Note that the lineId is the cart line ID.
-  // Note: You should use the reshapeCart function to reshape the cart for the app.
+  const { updateCurrentCartLineItemQuantity } = getWixClient().use(currentCart);
 
-  throw new Error('updateCart is not implemented')
+  const { cart } = await updateCurrentCartLineItemQuantity(
+    lines.map(({ id, quantity }) => ({
+      id: id,
+      quantity
+    }))
+  );
+
+  return reshapeCart(cart!);
 }
 
 export async function createCheckoutUrl(postFlowUrl: string) {
-  // Here we should create a checkout URL for the user to complete the purchase.
-  // We should use the postFlowUrl to redirect the user back to the site after the purchase is complete.
-  // The checkout URL is based on redirect sessions, see the full documentation at:
-  // https://dev.wix.com/docs/sdk/api-reference/redirects/redirects/introduction
+  const {
+    currentCart: { createCheckoutFromCurrentCart },
+    redirects: { createRedirectSession }
+  } = getWixClient().use({ currentCart, redirects });
 
-  return 'https://google.com';
+  const currentCheckout = await createCheckoutFromCurrentCart({
+    channelType: currentCart.ChannelType.OTHER_PLATFORM
+  });
+
+  const { redirectSession } = await createRedirectSession({
+    ecomCheckout: { checkoutId: currentCheckout.checkoutId },
+    callbacks: {
+      postFlowUrl
+    }
+  });
+
+  return redirectSession?.fullUrl!;
 }
 
 export async function getMenu(handle: string): Promise<Menu[]> {
-  // This app also manages its menu using the API provider as a dynamic CMS data.
-  // This functon should return the menu items for the given menu handle.
-  // Think how you can model the menu in a way that will allow to easily retrieve
-  // the path of the relevant page for each menu item.
+  const { queryDataItems } = getWixClient().use(items);
 
-  return [];
+  const { items: menus } = await queryDataItems({
+    dataCollectionId: 'Menus',
+    includeReferencedItems: ['pages']
+  })
+    .eq('slug', handle)
+    .find();
+
+  const menu = menus[0];
+
+  return (
+    menu?.data!.pages.map((page: { title: string; slug: string }) => ({
+      title: page.title,
+      path: page.slug
+    })) || []
+  );
 }
 
 export async function getPage(handle: string): Promise<Page> {
-  // This function is used to retrieve a specific page by it's handle (slug).
-  // Depending on how you modeled your pages, this function should be able to
-  // return only a specific page by handle / slug.
+  const { queryDataItems } = getWixClient().use(items);
 
-  throw new Error('getPage is not implemented')
+  const { items: pages } = await queryDataItems({
+    dataCollectionId: 'Pages'
+  })
+    .eq('slug', handle)
+    .find();
+
+  const page = pages[0]!;
+
+  return {
+    id: page._id!,
+    title: page.data!.title,
+    handle: page.data!.slug,
+    body: page.data!.body,
+    bodySummary: '',
+    createdAt: page.data!._createdDate.$date,
+    seo: {
+      title: page.data!.seoTitle,
+      description: page.data!.seoDescription
+    },
+    updatedAt: page.data!._updatedDate.$date
+  };
 }
 
 export async function getPages(): Promise<Page[]> {
-  // This template also uses the API provider as a CMS - allowing it to define
-  // dynamic pages that will be retrieved from Wix at runtime.
-  // Check out how we can use Wix as a CMS here - How would you model and manage the pages?
+  const { queryDataItems } = getWixClient().use(items);
 
-  return [];
+  const { items: pages } = await queryDataItems({
+    dataCollectionId: 'Pages'
+  }).find();
+
+  return pages.map((item) => ({
+    id: item._id!,
+    title: item.data!.title,
+    handle: item.data!.slug,
+    body: item.data!.body,
+    bodySummary: '',
+    createdAt: item.data!._createdDate.$date,
+    seo: {
+      title: item.data!.seoTitle,
+      description: item.data!.seoDescription
+    },
+    updatedAt: item.data!._updatedDate.$date
+  }));
 }
 
 const reshapeCart = (cart: currentCart.Cart): Cart => {
