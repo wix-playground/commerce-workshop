@@ -1,5 +1,5 @@
 import { currentCart } from '@wix/ecom';
-import { WixClient, createClient, media } from '@wix/sdk';
+import { OAuthStrategy, WixClient, createClient, media } from '@wix/sdk';
 import { collections, products } from '@wix/stores';
 import { SortKey } from 'lib/constants';
 import { Cart, Collection, Menu, Page, Product } from './types';
@@ -9,7 +9,13 @@ export const getWixClient = (): WixClient => {
   // with the visitor session that we created in the middleware. We need to make sure
   // to read the tokens from the cookies and initialize the client correctly.
   
-  return createClient({});
+  const wixClient = createClient({
+    auth: OAuthStrategy({
+      clientId: process.env.WIX_CLIENT_ID!,
+    })
+  });
+  
+  return wixClient;
 };
 
 export async function getProducts({
