@@ -11,7 +11,7 @@ export const getWixClient = (): WixClient => {
   
   const wixClient = createClient({
     auth: OAuthStrategy({
-      clientId: process.env.WIX_CLIENT_ID!,
+      clientId: process.env.NEXT_PUBLIC_WIX_CLIENT_ID!,
     })
   });
   
