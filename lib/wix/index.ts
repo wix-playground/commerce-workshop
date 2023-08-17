@@ -25,13 +25,14 @@ export async function getProducts({
   // query - A search query that was entered in the UI
   // reverse - if true - should be descending sort, otherwise - ascending
   // sortKey - the key to sort by (price, title, etc.)
+  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
 
   return [];
 }
 
 export async function getProduct(handle: string): Promise<Product | undefined> {
   // Here we need to get a specific product by it's handle - in Wix terms it's called the slug.
-  // Note: you can use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
+  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
 
   return undefined;
 }
@@ -40,7 +41,7 @@ export async function getProductRecommendations(productId: string): Promise<Prod
   // In this function we want to return a list of recommended products for the given product ID.
   // Those will be displayed on the product page, suggesting other related products to the user.
   // Try to see if you can find the correct API to call to get the product recommendations.
-  // Note: you can use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
+  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
   
   return [];
 }
@@ -73,7 +74,7 @@ export async function getCollections(): Promise<Collection[]> {
 
 export async function getCollection(handle: string): Promise<Collection | undefined> {
   // This function retrieves a specific collection by it's handle (slug).
-  // Note: you can use the `reshapeCollection` function to reshape the collection for this app.
+  // Note: you should use the `reshapeCollection` function to reshape the collection for this app.
 
   return undefined;
 }
@@ -90,6 +91,7 @@ export async function getCollectionProducts({
   // This function returns all the products in a given collection. Note that
   // the collection parameter here is the collection handle (/ slug). This function should
   // also respect the `reverse` and `sortKey` paramteres like `getProducts`.
+  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
 
   return [];
 }
@@ -98,21 +100,22 @@ export async function addToCart(
   lines: { merchandiseId: string; quantity: number }[]
 ): Promise<Cart> {
   // This function adds the given lines to the current visitor cart. Note that the merchandiseId is the product ID.
-  // You can use the reshapeCart function to reshape the cart for the app.
+  // Note: You should use the reshapeCart function to reshape the cart for the app.
 
   throw new Error('addToCart is not implemented')
 }
 
 export async function getCart(): Promise<Cart | undefined> {
-  // This function returns the current visitor cart. You can use the reshapeCart function to reshape the cart for the app.
+  // This function returns the current visitor cart.
   // Note that the visitor might not have a cart yet, so this function should return undefined if there is no cart.
+  // Note: You should use the reshapeCart function to reshape the cart for the app.
   
   return undefined;
 }
 
 export async function removeFromCart(lineIds: string[]): Promise<Cart> {
   // This function removes the given lines from the current visitor cart. Note that the lineId is the cart line ID.
-  // You can use the reshapeCart function to reshape the cart for the app.
+  // Note: You should use the reshapeCart function to reshape the cart for the app.
 
   throw new Error('removeFromCart is not implemented')
 }
@@ -121,7 +124,7 @@ export async function updateCart(
   lines: { id: string; merchandiseId: string; quantity: number }[]
 ): Promise<Cart> {
   // This function updates the given lines in the current visitor cart. Note that the lineId is the cart line ID.
-  // You can use the reshapeCart function to reshape the cart for the app.
+  // Note: You should use the reshapeCart function to reshape the cart for the app.
 
   throw new Error('updateCart is not implemented')
 }
