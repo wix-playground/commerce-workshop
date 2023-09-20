@@ -180,7 +180,7 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
             return acc + Number.parseFloat(item.price?.amount!) * item.quantity!;
           }, 0)
         ),
-        currencyCode: 'USD'
+        currencyCode: cart.currency!
       },
       totalAmount: {
         amount: String(
@@ -188,11 +188,11 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
             return acc + Number.parseFloat(item.price?.amount!) * item.quantity!;
           }, 0)
         ),
-        currencyCode: 'USD'
+        currencyCode: cart.currency!
       },
       totalTaxAmount: {
         amount: '0',
-        currencyCode: 'USD'
+        currencyCode: cart.currency!
       }
     },
     lines: cart.lineItems!.map((item) => {
@@ -203,12 +203,12 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
         cost: {
           totalAmount: {
             amount: String(Number.parseFloat(item.price?.amount!) * item.quantity!),
-            currencyCode: 'USD'
+            currencyCode: cart.currency!
           }
         },
         merchandise: {
           id: item._id!,
-          title: item.productName?.original!,
+          title: item.descriptionLines?.map(x => x.colorInfo?.original ?? x.plainText?.original).join(' / ') ?? '',
           selectedOptions: [],
           product: {
             handle: item.url?.split('/').pop() ?? '',
@@ -217,7 +217,8 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
               url: media.getImageUrl(item.image!).url,
               width: media.getImageUrl(item.image!).width,
               height: media.getImageUrl(item.image!).height
-            }
+            },
+            title: item.productName?.original!,
           } as any as Product,
           url: `/product/${item.url?.split('/').pop() ?? ''}`
         }
@@ -251,7 +252,9 @@ const reshapeProduct = (item: products.Product) => {
     title: item.name!,
     description: item.description!,
     descriptionHtml: item.description!,
-    availableForSale: true,
+    availableForSale:
+      item.stock?.inventoryStatus === 'IN_STOCK' ||
+      item.stock?.inventoryStatus === 'PARTIALLY_OUT_OF_STOCK',
     handle: item.slug!,
     images:
       item.media
@@ -265,14 +268,20 @@ const reshapeProduct = (item: products.Product) => {
     priceRange: {
       minVariantPrice: {
         amount: String(item.price?.price!),
-        currencyCode: 'USD'
+        currencyCode: item.price?.currency!
       },
       maxVariantPrice: {
         amount: String(item.price?.price!),
-        currencyCode: 'USD'
+        currencyCode: item.price?.currency!
       }
     },
-    options: [],
+    options: (item.productOptions ?? []).map((option) => ({
+      id: option.name!,
+      name: option.name!,
+      values: option.choices!.map((choice) =>
+        option.optionType === products.OptionType.color ? choice.description : choice.value
+      )
+    })),
     featuredImage: {
       url: item.media?.mainMedia?.image?.url!,
       altText: item.media?.mainMedia?.image?.altText! ?? 'alt text',
@@ -280,17 +289,39 @@ const reshapeProduct = (item: products.Product) => {
       height: item.media?.mainMedia?.image?.height!
     },
     tags: [],
-    variants: item.variants?.map((variant) => ({
-      id: variant._id!,
-      // todo: is this correct?
-      title: item.name!,
-      price: {
-        amount: String(variant.variant?.priceData?.price),
-        currencyCode: 'USD'
-      },
-      availableForSale: true,
-      selectedOptions: []
-    })),
+    variants: item.manageVariants
+      ? item.variants?.map((variant) => ({
+          id: variant._id!,
+          title: item.name!,
+          price: {
+            amount: String(variant.variant?.priceData?.price),
+            currencyCode: variant.variant?.priceData?.currency
+          },
+          availableForSale: variant.stock?.trackQuantity ? (variant.stock?.quantity ?? 0 > 0) : true,
+          selectedOptions: Object.entries(variant.choices ?? {}).map(([name, value]) => ({
+            name,
+            value
+          }))
+        }))
+      : cartesian(
+          item.productOptions?.map(
+            (x) =>
+              x.choices?.map((choice) => ({
+                name: x.name,
+                value:
+                  x.optionType === products.OptionType.color ? choice.description : choice.value
+              })) ?? []
+          ) ?? []
+        ).map((selectedOptions) => ({
+          id: '00000000-0000-0000-0000-000000000000',
+          title: item.name!,
+          price: {
+            amount: String(item.price?.price!),
+            currencyCode: item.price?.currency!
+          },
+          availableForSale: item.stock?.inventoryStatus === 'IN_STOCK',
+          selectedOptions: selectedOptions
+        })),
     seo: {
       description: item.description!,
       title: item.name!
@@ -298,3 +329,6 @@ const reshapeProduct = (item: products.Product) => {
     updatedAt: item.lastUpdated?.toString()!
   } as Product;
 };
+
+const cartesian = <T>(data: T[][]) =>
+  data.reduce((a, b) => a.flatMap((d) => b.map((e) => [...d, e])), [[]] as T[][]);
