@@ -1,6 +1,3 @@
-import { currentCart } from '@wix/ecom';
-import { OAuthStrategy, createClient, media } from '@wix/sdk';
-import { collections, products } from '@wix/stores';
 import { SortKey } from 'lib/constants';
 import { Cart, Collection, Menu, Page, Product, ProductVariant } from './types';
 
@@ -8,14 +5,6 @@ export const getWixClient = () => {
   // In this function we want to return a new WixClient that has been initialized
   // with the visitor session that we created in the middleware. We need to make sure
   // to read the tokens from the cookies and initialize the client correctly.
-  
-  const wixClient = createClient({
-    auth: OAuthStrategy({
-      clientId: process.env.WIX_CLIENT_ID!,
-    })
-  });
-  
-  return wixClient;
 };
 
 export async function getProducts({
