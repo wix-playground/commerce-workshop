@@ -10,7 +10,3 @@ export async function middleware(request: NextRequest) {
 
   return res;
 }
-
-export const config = {
-  unstable_allowDynamic: ['/node_modules/.pnpm/lodash@*/**']
-};

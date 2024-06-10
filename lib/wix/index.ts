@@ -1,17 +1,17 @@
 import { currentCart } from '@wix/ecom';
-import { OAuthStrategy, WixClient, createClient, media } from '@wix/sdk';
+import { OAuthStrategy, createClient, media } from '@wix/sdk';
 import { collections, products } from '@wix/stores';
 import { SortKey } from 'lib/constants';
-import { Cart, Collection, Menu, Page, Product } from './types';
+import { Cart, Collection, Menu, Page, Product, ProductVariant } from './types';
 
-export const getWixClient = (): WixClient => {
+export const getWixClient = () => {
   // In this function we want to return a new WixClient that has been initialized
   // with the visitor session that we created in the middleware. We need to make sure
   // to read the tokens from the cookies and initialize the client correctly.
   
   const wixClient = createClient({
     auth: OAuthStrategy({
-      clientId: process.env.NEXT_PUBLIC_WIX_CLIENT_ID!,
+      clientId: process.env.WIX_CLIENT_ID!,
     })
   });
   
@@ -103,7 +103,7 @@ export async function getCollectionProducts({
 }
 
 export async function addToCart(
-  lines: { merchandiseId: string; quantity: number }[]
+  lines: { productId: string; variant?: ProductVariant; quantity: number }[]
 ): Promise<Cart> {
   // This function adds the given lines to the current visitor cart. Note that the merchandiseId is the product ID.
   // Note: You should use the reshapeCart function to reshape the cart for the app.
@@ -208,7 +208,10 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
         },
         merchandise: {
           id: item._id!,
-          title: item.descriptionLines?.map(x => x.colorInfo?.original ?? x.plainText?.original).join(' / ') ?? '',
+          title:
+            item.descriptionLines
+              ?.map((x) => x.colorInfo?.original ?? x.plainText?.original)
+              .join(' / ') ?? '',
           selectedOptions: [],
           product: {
             handle: item.url?.split('/').pop() ?? '',
@@ -218,7 +221,7 @@ const reshapeCart = (cart: currentCart.Cart): Cart => {
               width: media.getImageUrl(item.image!).width,
               height: media.getImageUrl(item.image!).height
             },
-            title: item.productName?.original!,
+            title: item.productName?.original!
           } as any as Product,
           url: `/product/${item.url?.split('/').pop() ?? ''}`
         }
@@ -297,7 +300,7 @@ const reshapeProduct = (item: products.Product) => {
             amount: String(variant.variant?.priceData?.price),
             currencyCode: variant.variant?.priceData?.currency
           },
-          availableForSale: variant.stock?.trackQuantity ? (variant.stock?.quantity ?? 0 > 0) : true,
+          availableForSale: variant.stock?.trackQuantity ? variant.stock?.quantity ?? 0 > 0 : true,
           selectedOptions: Object.entries(variant.choices ?? {}).map(([name, value]) => ({
             name,
             value

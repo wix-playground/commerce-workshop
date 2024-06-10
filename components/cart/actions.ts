@@ -1,28 +1,38 @@
 'use server';
 
 import { addToCart, removeFromCart, updateCart } from 'lib/wix';
+import { ProductVariant } from 'lib/wix/types';
+import { revalidatePath } from 'next/cache';
 
-export const addItem = async (variantId: string | undefined): Promise<String | undefined> => {
-  if (!variantId) {
-    return 'Missing product variant ID';
+export const addItem = async (
+  _prevState: unknown,
+  item: {
+    productId: string;
+    variant?: ProductVariant;
+  }
+) => {
+  if (!item.productId) {
+    return 'Missing product ID';
   }
 
   try {
-    await addToCart([{ merchandiseId: variantId, quantity: 1 }]);
+    await addToCart([{ productId: item.productId, variant: item.variant, quantity: 1 }]);
+    revalidatePath('/', 'layout');
   } catch (e) {
     return 'Error adding item to cart';
   }
 };
 
-export const removeItem = async (lineId: string): Promise<String | undefined> => {
+export const removeItem = async (_prevState: unknown, lineId: string): Promise<String | undefined> => {
   try {
     await removeFromCart([lineId]);
+    revalidatePath('/', 'layout');
   } catch (e) {
     return 'Error removing item from cart';
   }
 };
 
-export const updateItemQuantity = async ({
+export const updateItemQuantity = async (_prevState: unknown, {
   lineId,
   variantId,
   quantity
@@ -39,6 +49,7 @@ export const updateItemQuantity = async ({
         quantity
       }
     ]);
+    revalidatePath('/', 'layout');
   } catch (e) {
     return 'Error updating item quantity';
   }
