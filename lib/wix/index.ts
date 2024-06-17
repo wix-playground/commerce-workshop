@@ -324,3 +324,19 @@ const reshapeProduct = (item: products.Product) => {
 
 const cartesian = <T>(data: T[][]) =>
   data.reduce((a, b) => a.flatMap((d) => b.map((e) => [...d, e])), [[]] as T[][]);
+
+function variantInfo(variant?: ProductVariant) {
+  return (
+    variant && {
+      options:
+        variant.id === '00000000-0000-0000-0000-000000000000'
+          ? {
+              options: variant.selectedOptions.reduce(
+                (acc, option) => ({ ...acc, [option.name!]: option.value! }),
+                {} as Record<string, string>
+              )
+            }
+          : { variantId: variant?.id }
+    }
+  );
+}
