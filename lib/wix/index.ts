@@ -32,15 +32,6 @@ export async function getProduct(handle: string): Promise<Product | undefined> {
   return undefined;
 }
 
-export async function getProductRecommendations(productId: string): Promise<Product[]> {
-  // In this function we want to return a list of recommended products for the given product ID.
-  // Those will be displayed on the product page, suggesting other related products to the user.
-  // Try to see if you can find the correct API to call to get the product recommendations.
-  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
-  
-  return [];
-}
-
 export async function getCollections(): Promise<Collection[]> {
   // This function retrieves all the product collections (in Wix Dashborad called Categories).
   // Get all the collections and pass them here where they will be reshaped for the app.
@@ -61,7 +52,9 @@ export async function getCollections(): Promise<Collection[]> {
     },
     // Filter out the `hidden` collections.
     // Collections that start with `hidden-*` need to be hidden on the search page.
-    ...reshapeCollections(wixCollections).filter((collection) => !collection.handle.startsWith('hidden'))
+    ...reshapeCollections(wixCollections).filter(
+      (collection) => !collection.handle.startsWith('hidden')
+    )
   ];
 
   return productCollections;
@@ -97,14 +90,14 @@ export async function addToCart(
   // This function adds the given lines to the current visitor cart. Note that the merchandiseId is the product ID.
   // Note: You should use the reshapeCart function to reshape the cart for the app.
 
-  throw new Error('addToCart is not implemented')
+  throw new Error('addToCart is not implemented');
 }
 
 export async function getCart(): Promise<Cart | undefined> {
   // This function returns the current visitor cart.
   // Note that the visitor might not have a cart yet, so this function should return undefined if there is no cart.
   // Note: You should use the reshapeCart function to reshape the cart for the app.
-  
+
   return undefined;
 }
 
@@ -112,7 +105,7 @@ export async function removeFromCart(lineIds: string[]): Promise<Cart> {
   // This function removes the given lines from the current visitor cart. Note that the lineId is the cart line ID.
   // Note: You should use the reshapeCart function to reshape the cart for the app.
 
-  throw new Error('removeFromCart is not implemented')
+  throw new Error('removeFromCart is not implemented');
 }
 
 export async function updateCart(
@@ -121,7 +114,7 @@ export async function updateCart(
   // This function updates the given lines in the current visitor cart. Note that the lineId is the cart line ID.
   // Note: You should use the reshapeCart function to reshape the cart for the app.
 
-  throw new Error('updateCart is not implemented')
+  throw new Error('updateCart is not implemented');
 }
 
 export async function createCheckoutUrl(postFlowUrl: string) {
@@ -147,13 +140,22 @@ export async function getPage(handle: string): Promise<Page> {
   // Depending on how you modeled your pages, this function should be able to
   // return only a specific page by handle / slug.
 
-  throw new Error('getPage is not implemented')
+  throw new Error('getPage is not implemented');
 }
 
 export async function getPages(): Promise<Page[]> {
   // This template also uses the API provider as a CMS - allowing it to define
   // dynamic pages that will be retrieved from Wix at runtime.
   // Check out how we can use Wix as a CMS here - How would you model and manage the pages?
+
+  return [];
+}
+
+export async function getProductRecommendations(productId: string): Promise<Product[]> {
+  // In this function we want to return a list of recommended products for the given product ID.
+  // Those will be displayed on the product page, suggesting other related products to the user.
+  // Try to see if you can find the correct API to call to get the product recommendations.
+  // Note: you should use the reshapeProduct function to transform the Wix product to the product type that we use in the app.
 
   return [];
 }
