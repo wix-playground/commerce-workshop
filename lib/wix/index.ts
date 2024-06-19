@@ -1,3 +1,4 @@
+import { media } from '@wix/sdk';
 import { SortKey } from 'lib/constants';
 import { Cart, Collection, Menu, Page, Product, ProductVariant } from './types';
 
