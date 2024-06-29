@@ -15,7 +15,7 @@ export async function getProducts({
 }: {
   query?: string;
   reverse?: boolean;
-  sortKey?: string;
+  sortKey?: SortKey;
 }): Promise<Product[]> {
   // Here we should get all the products that match the requested parameters:
   // query - A search query that was entered in the UI
